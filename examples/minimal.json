@@ -1,0 +1,26 @@
+{
+  "name": "Минимальный бот",
+  "description": "Самый простой валидный сценарий: start → end",
+  "config": {
+    "id": "minimal-bot-machine",
+    "initial": "start",
+    "context": {},
+    "states": {
+      "start": {
+        "type": "start",
+        "transitions": [
+          {
+            "id": "to-end",
+            "regex": ".*",
+            "priority": 0,
+            "description": "Начальный переход",
+            "targetNodeId": "end"
+          }
+        ]
+      },
+      "end": {
+        "type": "end"
+      }
+    }
+  }
+}

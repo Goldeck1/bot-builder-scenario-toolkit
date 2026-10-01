@@ -1,0 +1,141 @@
+{
+  "name": "Эталон: по одному узлу каждого типа",
+  "description": "Демонстрирует точные поля data всех 9 типов узлов (выверено по движку). Inline-кнопки роутятся по callback_data.",
+  "config": {
+    "id": "all-nodes-machine",
+    "initial": "start",
+    "context": {
+      "user_choice": "",
+      "lead_name": "",
+      "plan_name": "",
+      "score": "",
+      "manager_id": "123456789"
+    },
+    "states": {
+      "start": {
+        "type": "start",
+        "transitions": [
+          { "id": "t-start", "regex": ".*", "priority": 0, "unconditional": true, "description": "Старт", "targetNodeId": "menu" }
+        ]
+      },
+      "menu": {
+        "type": "message",
+        "data": {
+          "message": "Выберите раздел:",
+          "trackResponseInStats": true,
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "Тарифы", "callback_data": "plans" }],
+              [{ "text": "Оставить заявку", "callback_data": "lead" }],
+              [{ "text": "Сайт", "url": "https://example.com" }]
+            ]
+          },
+          "saveVariable": "user_choice",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Не понял, нажмите кнопку меню.",
+          "maxInvalidAttempts": 3,
+          "invalidAttemptsTargetNodeId": "menu"
+        },
+        "transitions": [
+          { "id": "t-plans", "regex": "/plans/i", "priority": 1, "description": "Тарифы", "targetNodeId": "get_plans" },
+          { "id": "t-lead",  "regex": "/lead/i",  "priority": 2, "description": "Заявка", "targetNodeId": "collect_name" },
+          { "id": "t-fb",    "regex": ".*",        "priority": 100, "description": "Повтор", "targetNodeId": "menu" }
+        ]
+      },
+      "get_plans": {
+        "type": "http",
+        "data": {
+          "url": "https://api.example.com/plans?u={lead_name}",
+          "method": "GET",
+          "headers": { "Content-Type": "application/json" },
+          "queryParams": { "lang": "ru" },
+          "timeout": 30000,
+          "auth": { "type": "none" },
+          "variableMappings": [{ "field": "data.plan", "variable": "plan_name" }]
+        },
+        "transitions": [
+          { "id": "t-after-http", "regex": ".*", "priority": 0, "unconditional": true, "description": "После HTTP", "targetNodeId": "show_plan" }
+        ]
+      },
+      "show_plan": {
+        "type": "message",
+        "data": {
+          "message": "Ваш тариф: {plan_name}",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Напишите что-нибудь, чтобы продолжить.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "menu"
+        },
+        "transitions": [
+          { "id": "t-plan-next", "regex": ".*", "priority": 100, "description": "Далее", "targetNodeId": "set_score" }
+        ]
+      },
+      "collect_name": {
+        "type": "message",
+        "data": {
+          "message": "Как вас зовут?",
+          "saveVariable": "lead_name",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Введите имя текстом.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "menu"
+        },
+        "transitions": [
+          { "id": "t-name-next", "regex": ".*", "priority": 100, "description": "Далее", "targetNodeId": "notify_manager" }
+        ]
+      },
+      "notify_manager": {
+        "type": "notify_user",
+        "data": {
+          "recipientId": "{manager_id}",
+          "message": "Новая заявка от {lead_name}. Раздел: {user_choice}"
+        },
+        "transitions": [
+          { "id": "t-after-notify", "regex": ".*", "priority": 0, "unconditional": true, "description": "Продолжить", "targetNodeId": "set_score" }
+        ]
+      },
+      "set_score": {
+        "type": "action",
+        "data": {
+          "variables": [
+            { "name": "score", "value": "10" }
+          ]
+        },
+        "transitions": [
+          { "id": "t-after-action", "regex": ".*", "priority": 0, "unconditional": true, "description": "Записали score", "targetNodeId": "branch" }
+        ]
+      },
+      "branch": {
+        "type": "condition",
+        "data": {
+          "condition": "parseInt(context.score) >= 9",
+          "trueTarget": "remind",
+          "falseTarget": "cleanup"
+        }
+      },
+      "remind": {
+        "type": "schedule_message",
+        "data": {
+          "delayValue": 1,
+          "delayUnit": "days",
+          "message": "Напоминаем о вашей заявке, {lead_name}!",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [[{ "text": "Открыть сайт", "url": "https://example.com" }]]
+          }
+        },
+        "transitions": [
+          { "id": "t-after-remind", "regex": ".*", "priority": 0, "unconditional": true, "description": "Дальше", "targetNodeId": "cleanup" }
+        ]
+      },
+      "cleanup": {
+        "type": "clear_scheduled_messages",
+        "transitions": [
+          { "id": "t-after-clean", "regex": ".*", "priority": 0, "unconditional": true, "description": "В конец", "targetNodeId": "end" }
+        ]
+      },
+      "end": { "type": "end" }
+    }
+  }
+}

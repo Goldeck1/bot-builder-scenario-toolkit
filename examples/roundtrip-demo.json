@@ -1,0 +1,294 @@
+{
+  "name": "Round-trip демо (все типы нод и кнопок)",
+  "description": "Тестовый бот: reply+inline кнопки, ссылки, condition, action, http(agify), notify_user, отложенное сообщение, очистка очереди, обработка ошибок, цикл.",
+  "config": {
+    "id": "roundtrip-demo-machine",
+    "initial": "start",
+    "context": {
+      "main_choice": "",
+      "lead_name": "",
+      "phone": "",
+      "age": "",
+      "q1": "",
+      "score": ""
+    },
+    "states": {
+      "start": {
+        "type": "start",
+        "transitions": [
+          { "id": "t-start", "regex": ".*", "priority": 0, "unconditional": true, "description": "Старт", "targetNodeId": "welcome" }
+        ]
+      },
+      "welcome": {
+        "type": "message",
+        "data": {
+          "message": "Привет, {username}! 👋 Я демо-бот. Выбери раздел кнопкой снизу:",
+          "keyboard": {
+            "type": "reply",
+            "resize_keyboard": true,
+            "one_time": false,
+            "buttons": [
+              [{ "text": "🎯 Квиз" }, { "text": "📞 Заявка" }],
+              [{ "text": "ℹ️ О боте" }, { "text": "🔗 Ссылки" }]
+            ]
+          },
+          "saveVariable": "main_choice",
+          "trackResponseInStats": true,
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Не понял 🤔 Нажми одну из кнопок меню.",
+          "maxInvalidAttempts": 3,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "w-quiz", "regex": "/Квиз/i",   "priority": 1, "description": "Квиз",   "targetNodeId": "quiz_q1" },
+          { "id": "w-lead", "regex": "/Заявка/i", "priority": 2, "description": "Заявка", "targetNodeId": "lead_name" },
+          { "id": "w-about","regex": "/О боте/i", "priority": 3, "description": "О боте",  "targetNodeId": "about" },
+          { "id": "w-links","regex": "/Ссылки/i", "priority": 4, "description": "Ссылки",  "targetNodeId": "links" },
+          { "id": "w-fb",   "regex": ".*",         "priority": 100,"description": "Повтор", "targetNodeId": "welcome" }
+        ]
+      },
+      "about": {
+        "type": "message",
+        "data": {
+          "message": "Я собран в Bot Builder и умею: reply/inline кнопки, ссылки, условия, HTTP-запросы, уведомления, отложенные сообщения. Канал: {messengerType}.",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "🌐 Открыть сайт", "url": "https://telegram.org" }],
+              [{ "text": "⬅️ В меню", "callback_data": "menu" }]
+            ]
+          },
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нажми кнопку под сообщением.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "ab-menu", "regex": "/menu/i", "priority": 1, "description": "В меню", "targetNodeId": "welcome" },
+          { "id": "ab-fb",   "regex": ".*",       "priority": 100, "description": "Повтор", "targetNodeId": "about" }
+        ]
+      },
+      "links": {
+        "type": "message",
+        "data": {
+          "message": "Полезные ссылки 🔗 (inline-кнопки со ссылками):",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "Telegram", "url": "https://telegram.org" }, { "text": "GitHub", "url": "https://github.com" }],
+              [{ "text": "⬅️ В меню", "callback_data": "menu" }]
+            ]
+          },
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нажми кнопку.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "ln-menu", "regex": "/menu/i", "priority": 1, "description": "В меню", "targetNodeId": "welcome" },
+          { "id": "ln-fb",   "regex": ".*",       "priority": 100, "description": "Повтор", "targetNodeId": "links" }
+        ]
+      },
+      "quiz_q1": {
+        "type": "message",
+        "data": {
+          "message": "🎯 Вопрос: сколько будет 2 + 2?",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "3", "callback_data": "ans_3" }, { "text": "4", "callback_data": "ans_4" }, { "text": "22", "callback_data": "ans_22" }]
+            ]
+          },
+          "saveVariable": "q1",
+          "trackResponseInStats": true,
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Выбери вариант кнопкой.",
+          "maxInvalidAttempts": 3,
+          "invalidAttemptsTargetNodeId": "quiz_q1"
+        },
+        "transitions": [
+          { "id": "q-ok",  "regex": "/ans_4/i",       "priority": 1, "description": "Верно", "targetNodeId": "quiz_correct" },
+          { "id": "q-bad", "regex": "/ans_3|ans_22/i", "priority": 2, "description": "Неверно", "targetNodeId": "quiz_wrong" },
+          { "id": "q-fb",  "regex": ".*",              "priority": 100, "description": "Повтор", "targetNodeId": "quiz_q1" }
+        ]
+      },
+      "quiz_correct": {
+        "type": "action",
+        "data": { "variables": [ { "name": "score", "value": "100" } ] },
+        "transitions": [
+          { "id": "qc-next", "regex": ".*", "priority": 0, "unconditional": true, "description": "Балл начислен", "targetNodeId": "quiz_result" }
+        ]
+      },
+      "quiz_result": {
+        "type": "message",
+        "data": {
+          "message": "✅ Верно! Твой балл: {score}. Возвращаемся в меню.",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [ [{ "text": "⬅️ В меню", "callback_data": "menu" }] ]
+          },
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нажми кнопку.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "qr-menu", "regex": "/menu/i", "priority": 1, "description": "В меню", "targetNodeId": "welcome" },
+          { "id": "qr-fb",   "regex": ".*",       "priority": 100, "description": "Повтор", "targetNodeId": "quiz_result" }
+        ]
+      },
+      "quiz_wrong": {
+        "type": "message",
+        "data": {
+          "message": "❌ Неверно. Правильный ответ — 4. Попробуешь ещё?",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "🔁 Ещё раз", "callback_data": "retry" }, { "text": "⬅️ В меню", "callback_data": "menu" }]
+            ]
+          },
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нажми кнопку.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "qw-retry", "regex": "/retry/i", "priority": 1, "description": "Ещё раз", "targetNodeId": "quiz_q1" },
+          { "id": "qw-menu",  "regex": "/menu/i",  "priority": 2, "description": "В меню",  "targetNodeId": "welcome" },
+          { "id": "qw-fb",    "regex": ".*",        "priority": 100, "description": "Повтор", "targetNodeId": "quiz_wrong" }
+        ]
+      },
+      "lead_name": {
+        "type": "message",
+        "data": {
+          "message": "📞 Оставим заявку. Как тебя зовут?",
+          "saveVariable": "lead_name",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Напиши имя текстом, пожалуйста.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "ln-next", "regex": ".*", "priority": 100, "description": "Дальше", "targetNodeId": "guess_age" }
+        ]
+      },
+      "guess_age": {
+        "type": "http",
+        "data": {
+          "url": "https://api.agify.io/?name={lead_name}",
+          "method": "GET",
+          "headers": { "Content-Type": "application/json" },
+          "timeout": 30000,
+          "auth": { "type": "none" },
+          "variableMappings": [ { "field": "age", "variable": "age" } ]
+        },
+        "transitions": [
+          { "id": "ga-next", "regex": ".*", "priority": 0, "unconditional": true, "description": "После HTTP", "targetNodeId": "show_age" }
+        ]
+      },
+      "show_age": {
+        "type": "message",
+        "data": {
+          "message": "{lead_name}, по статистике имён тебе примерно {age} лет 🎂 Теперь оставь телефон в формате +7XXXXXXXXXX:",
+          "saveVariable": "phone",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нужен телефон, например +79991234567.",
+          "maxInvalidAttempts": 3,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "sa-next", "regex": ".*", "priority": 100, "description": "Проверка", "targetNodeId": "check_phone" }
+        ]
+      },
+      "check_phone": {
+        "type": "condition",
+        "data": {
+          "condition": "context.phone && context.phone.replace(/\\D/g,'').length >= 10",
+          "trueTarget": "notify_lead",
+          "falseTarget": "phone_retry"
+        }
+      },
+      "phone_retry": {
+        "type": "message",
+        "data": {
+          "message": "Телефон выглядит некорректно. Введи ещё раз (минимум 10 цифр):",
+          "saveVariable": "phone",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Введи номер телефона.",
+          "maxInvalidAttempts": 3,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "pr-next", "regex": ".*", "priority": 100, "description": "Проверка", "targetNodeId": "check_phone" }
+        ]
+      },
+      "notify_lead": {
+        "type": "notify_user",
+        "data": {
+          "recipientId": "{userId}",
+          "message": "📋 Копия заявки:\nИмя: {lead_name}\nТелефон: {phone}\nОриент. возраст: {age}"
+        },
+        "transitions": [
+          { "id": "nl-next", "regex": ".*", "priority": 0, "unconditional": true, "description": "Дальше", "targetNodeId": "schedule_followup" }
+        ]
+      },
+      "schedule_followup": {
+        "type": "schedule_message",
+        "data": {
+          "delayValue": 1,
+          "delayUnit": "minutes",
+          "message": "⏰ Отложенное напоминание: спасибо за заявку, {lead_name}! Мы на связи.",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [ [{ "text": "🌐 Сайт", "url": "https://telegram.org" }] ]
+          }
+        },
+        "transitions": [
+          { "id": "sf-next", "regex": ".*", "priority": 0, "unconditional": true, "description": "Дальше", "targetNodeId": "thanks" }
+        ]
+      },
+      "thanks": {
+        "type": "message",
+        "data": {
+          "message": "🎉 Заявка принята, {lead_name}! Через минуту придёт напоминание. Можно отменить его или вернуться в меню.",
+          "keyboard": {
+            "type": "inline",
+            "buttons": [
+              [{ "text": "🛑 Отменить напоминание", "callback_data": "cancel" }],
+              [{ "text": "⬅️ В меню", "callback_data": "menu" }]
+            ]
+          },
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Нажми кнопку.",
+          "maxInvalidAttempts": 2,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "th-cancel", "regex": "/cancel/i", "priority": 1, "description": "Отмена напоминания", "targetNodeId": "cancel_reminders" },
+          { "id": "th-menu",   "regex": "/menu/i",   "priority": 2, "description": "В меню", "targetNodeId": "welcome" },
+          { "id": "th-fb",     "regex": ".*",         "priority": 100, "description": "Повтор", "targetNodeId": "thanks" }
+        ]
+      },
+      "cancel_reminders": {
+        "type": "clear_scheduled_messages",
+        "transitions": [
+          { "id": "cr-next", "regex": ".*", "priority": 0, "unconditional": true, "description": "Очищено", "targetNodeId": "bye" }
+        ]
+      },
+      "bye": {
+        "type": "message",
+        "data": {
+          "message": "🛑 Напоминание отменено. Спасибо, что протестировал! Напиши любое сообщение, чтобы начать заново.",
+          "enableErrorHandling": true,
+          "invalidInputMessage": "Напиши что-нибудь.",
+          "maxInvalidAttempts": 1,
+          "invalidAttemptsTargetNodeId": "welcome"
+        },
+        "transitions": [
+          { "id": "by-end", "regex": ".*", "priority": 100, "description": "В конец", "targetNodeId": "end" }
+        ]
+      },
+      "end": { "type": "end" }
+    }
+  }
+}
